@@ -10,7 +10,7 @@ from strawberry.types import Info
 from app.db import get_session
 from app.models import Song, Album, Artist
 from app.schema import SongQuery, AlbumQuery, ArtistQuery
-from app.schema import ArtistType
+from app.schema import ArtistType, AlbumType, SongType
 
 
 async def get_context(
@@ -97,5 +97,27 @@ class Mutation:
         await session.refresh(artist)
         return artist
 
+    @strawberry.mutation
+    async def add_album(self, name: str, artist: str, info: Info) -> AlbumType:
+        session = info.context['session']
+        result = await session.execute(select(Artist).where(Artist.name == artist))
+        artist_obj = result.scalars().first()
+        album = Album(name=name, artist_id=artist_obj.id)
+        session.add(album)
+        await session.commit()
+        await session.refresh(album)
+        return album
+
+    @strawberry.mutation
+    async def add_song(self, name: str, album: str, info: Info) -> SongType:
+        session = info.context['session']
+        result = await session.execute(select(Album).where(Album.name == album))
+        album_obj = result.scalars().first()
+        song = Song(name=name, album_id=album_obj.id)
+        session.add(song)
+        await session.commit()
+        await session.refresh(song)
+        return song
+        
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 router = GraphQLRouter(schema, context_getter=get_context)
